@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Detaylı Rapor Alma</title>
+    <link href="https://fonts.googleapis.com/css?family=PT+Sans:400,700&amp;subset=latin-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body{margin:0;padding:0;width:100%;height:100%;font-family:'PT Sans', sans-serif;}
+        *{box-sizing:border-box;font-size:16px;}
+        input{font-family:'PT Sans', sans-serif;}
+        input[type=text],select,textarea{border-radius:3px;padding:7px;border:1px solid #e1e1e1;-webkit-appearance:none;background:white;}
+        div.app-container,div.app-console{width:100%;padding:20px;background:rgba(225,225,225,.2);}
+        div.app-console{background:#37474F;}
+        div.f-row{width:100%;border-bottom:1px dotted #e1e1e1;padding:10px;}
+        div.f-row.desc{font-size:11px !important;background:rgba(225,225,225,.9);line-height:16px;}
+        div.f-row.desc b{font-size:11px !important;font-weight:700;}
+        span.f-header{display:block;width:50%;float:left;max-width:280px;line-height:33px;}
+        span.f-header:after{content:':';margin:0 20px 0 0;}
+        #transaction_ids,textarea{width:100%;max-width:350px;height:200px;}
+        i{font-size:16px !important;float:left;margin:0 10px 10px 0;}
+        pre{margin:0;padding:0;font-family:'Work Sans', sans-serif;line-height:22px;font-weight:300;color:#383838;}
+        code{display:block;overflow-x:auto;padding:0.5em;color:#333;background:#fff;border:1px solid #ccc;border-radius:3px;margin:20px 0 0 0;font-size:13px !important;}
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <form id="frmSMSApp">
+        <div class="f-row">
+            Bu uygulama Organik API'nin JavaScript kütüphanesinin nasıl kullanılacağını anlatmak için hazırlanmıştır. Kaynak kodunda görebileceğiniz "<b>oapi</b>" adlı değişken, Organik API kütüphanesinin yüklendiği nesne olmaktadır. Tüm Organik API işlemleri bu <b>oapi</b> nesnesi üzerinden yapılır. Form satırlarının başlarında içeriklerinin <b>oapi</b>'nin hangi metoduyla çağırıldığının bilgileri verilmiştir. Organik API kütüphanesinin
+            çalışması için <b>organikapi.js</b> dosyasının include edilmiş olması gerekir. Detaylı bilgi için kaynak kodunu incelyebilirsiniz.
+        </div>
+
+        <div class="f-row">
+            <span class="f-header">İşlem ID'leri (transaction_ids)</span>
+            <textarea id="transaction_ids" name="transaction_ids" placeholder="SMS gönderme işlemlerinde sistem tarafından döndürülen Transaction ID değerleridir."></textarea>
+        </div>
+        <div class="f-row">
+            <span class="f-header">Gönderim İzleme ID'leri (delivery_track_ids)</span>
+            <textarea id="delivery_track_ids" name="delivery_track_ids" placeholder="SMS gönderme işlemlerinde işlem için tarafınızca yazılan izleme ID'leridir."></textarea>
+        </div>
+        <div class="f-row">
+            <span class="f-header">GSM İzleme ID'leri (gsm_track_ids)<br />Bu değer gönderim işlemi onucunda dönen "invalid" dizisinde yer alan GSM numarlarını takip etmek için kullanılır.</span>
+            <textarea id="gsm_track_ids" name="gsm_track_ids" placeholder="SMS gönderme işlemlerinde sistem tarafından her GSM için döndürülen izleme ID'leridir."></textarea>
+        </div>
+        <div class="f-row">
+            <span class="f-header">Script Çalıştırma</span>
+            <select id="script">
+                <option value="async">Asenkron</option>
+                <option value="sync">Senkron</option>
+            </select>
+        </div>
+        <div class="f-row">
+            <span class="f-header"></span>
+            <input type="button" id="load_button" value="RAPOR GETİR" />
+        </div>
+    </form>
+</div>
+<script type="application/javascript" src="../organikapi.js"></script>
+<script>
+    window.onload = function() {
+        var oapi;
+        oapi = new Organikapi({
+            API_KEY: '4d652ee2afc95cae324c294fce2ff8af', // API_KEY değerini panelde API > API KULLANICILARI sayfasından oluşturabilirsiniz. Her kullanıcı için farklı API_KEY değeri üretmeniz gerekir. API_KEY değerinin güvenliği için panelden IP kontrolünü etkinleştirmeyi unutmayın.
+            DEBUG_MODE: true // Console mesajlarını görüntüleyebilmek için true olması gerekir.
+        });
+
+        var LOAD_BUTTON = document.getElementById('load_button');
+        LOAD_BUTTON.onclick = function() {
+            var script = document.getElementById('script');
+            var runtimeType = script.options[script.options.selectedIndex].value;
+
+            var didBox = document.getElementById('delivery_track_ids').value;
+            var delivery_track_ids = didBox.replace(/[^0-9]+/g,','); // Input içindeki geçersiz karakterleri temizlemek için kullanılır.
+
+            var tidBox = document.getElementById('transaction_ids').value;
+            var transaction_ids = tidBox.replace(/[^0-9]+/g,','); // Input içindeki geçersiz karakterleri temizlemek için kullanılır.
+
+            var gsmidBox = document.getElementById('gsm_track_ids').value;
+            var gsm_track_ids = gsmidBox.replace(/[\n\s]/g,','); // Input içindeki geçersiz karakterleri temizlemek için kullanılır.
+           // var gsm_track_ids = gsmidBox.replace(/[^((\d{1,11})\-(\d{1,6})\-(\d{1,20}))\n]/g,'');
+
+
+            // "balance" Kredi ve TL cinsinden hesabınızdaki bakiyeyi verir.
+            // Parametre olarak "select" ve "async" kabul eder. Varsayılan ayar olarak senkron çalışır.
+            // "select" parametresi zorunlu değildir. Değer olarak DOM üzerinde innerText ile değer alabilen
+            // herhangi bir HTML nesnesinin ID'sini alabilir (örn: div, span, h1 vb.). Buraya girdiğiniz
+            // HTML nesnesinin içine standart bir metin yazılır. Aşağıdak^i asenkron örneğinde bu özellik gösterilmiştir.
+            // Metot her çalıştırıldığında Organikapi nesnesinin için^deki TL_BALANCE ve CREDIT_BALANCE değişkenlerini günceller
+            // Bu örnekte oapi.TL_BALANCE ve oapi.CREDIT_BALANCE değişkenlerine veri atamaları yapılır.
+            // Bu atama asenkron ve senkron isteklerin ikisinde de yapılır.
+
+            if(runtimeType=='async'){
+                /* -------- ASENKRON VERİ ALMA ------- */
+                // Metodu asenkron çalıştırmak istediğinizde "async" parametresini "true" değeri ile göndermek zorundasınız.
+                // Asenkron çalışmada işlemden dönen veri callback fonksiyonunun aldığı tek parametreyle gönderilir.
+                // callback fonksiyonu veri parametresi olmadan ÇAĞIRILMAZ!
+                // Aşağıdaki örnekte bu parametre "res" olarak tanımlanmıştır.
+                oapi.detailedreport({
+                    async: true,
+                    delivery_track_ids: delivery_track_ids,
+                    transaction_ids: transaction_ids,
+                    gsm_track_ids: gsm_track_ids
+                }, function(res){
+                    if(res.result) { // API işleminin sonucu kontrol edilir. Başarılı ise burası, başarısız olması durumunda aşağısı çalışır.
+                        oapi.debug([ // GÖRÜNTÜLEMEK İÇİN LÜTFEN CONSOLE'A BAKIN!!!
+                            ['group', 'Yüklenen Detaylı Rapor Bilgileri'],
+                            ['info', res], // oapi.TL_BALANCE içinden güncel TL bakiye bilgileri alınır.
+                            ['groupEnd', '']
+                        ]);
+                    }else{
+                        oapi.debug([['group', 'Hatalı API İsteği:']]);
+                        oapi.debug([
+                            ['info', 'Mesaj: ' + res.error.message],
+                            ['info', 'Hata Kodu: ' + res.error.code],
+                            ['info', 'Hata Numarası: ' + res.error.number]
+                        ]);
+                        oapi.debug([['groupEnd', null]]);
+                    };
+                });
+                /* -------- ASENKRON VERİ ALMA ------- */
+            }else{
+                /* -------- SENKRON VERİ ALMA ------- */
+                // Metot işlemini bitirdiğinde sahip olduğu veriyi döndürdüğü gibi aynı zamanda callback desteği de vardır.
+                // Aşağıdaki örnekte dönen veri "basicReport" adlı dğeişkene atanmıştır.
+                var detailedReport = oapi.detailedreport({
+                    delivery_track_ids: delivery_track_ids,
+                    transaction_ids: transaction_ids,
+                    gsm_track_ids: gsm_track_ids
+                }); // Metottan dönen veri "detailedReport" içine yüklenir.
+
+                if(detailedReport.result){
+                    oapi.debug([ // GÖRÜNTÜLEMEK İÇİN LÜTFEN CONSOLE'A BAKIN!!!
+                        ['group', 'Yüklenen Detaylı Rapor Bilgileri'],
+                        ['info', basicReport],
+                        ['groupEnd', '']
+                    ]);
+                }else{
+                    oapi.debug([['group', 'Hatalı API İsteği:']]);
+                    oapi.debug([
+                        ['info', 'Mesaj: ' + basicReport.error.message],
+                        ['info', 'Hata Kodu: ' + basicReport.error.code],
+                        ['info', 'Hata Numarası: ' + basicReport.error.number]
+                    ]);
+                    oapi.debug([['groupEnd', null]]);
+                };
+                /* -------- SENKRON VERİ ALMA ------- */
+            };
+        };
+    };
+</script>
+</body>
+</html>
